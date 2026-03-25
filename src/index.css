@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+.mask-camera {
+  mask-image: radial-gradient(circle at center, black 60%, transparent 100%);
+  -webkit-mask-image: radial-gradient(circle at center, black 60%, transparent 100%);
+}

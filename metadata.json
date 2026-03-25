@@ -1,0 +1,8 @@
+{
+  "name": "LiveStream DIY Pro",
+  "description": "A professional live streaming assistant for e-commerce and content creators, featuring digital humans, visual effects, and advanced video processing.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
