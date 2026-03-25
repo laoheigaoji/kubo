@@ -19,7 +19,11 @@ import {
   Music,
   Volume2,
   Settings2,
-  Clock
+  Clock,
+  Heart,
+  Star,
+  Calendar,
+  Zap
 } from 'lucide-react';
 import { 
   AppState, 
@@ -32,7 +36,7 @@ import {
   VideoSource, 
   PlaybackMode 
 } from './types';
-import { DIGITAL_HUMANS, LIVE_COMPONENTS } from './constants';
+import { DIGITAL_HUMANS, LIVE_COMPONENTS, ENTERTAINMENT_TOOLS } from './constants';
 import { DigitalRain, CoolParticles } from './components/Effects/CanvasEffects';
 
 const INITIAL_STATE: AppState = {
@@ -68,6 +72,7 @@ const INITIAL_STATE: AppState = {
   activeComponents: [],
   componentStates: {},
   activeEffect: null,
+  activeEntertainment: null,
   isLive: false,
 };
 
@@ -143,6 +148,7 @@ export default function App() {
       case 'audio': return <AudioModal state={state} onUpdate={(audio) => setState(prev => ({ ...prev, audio }))} onClose={() => setActiveModal(null)} />;
       case 'video': return <VideoModal state={state} onUpdate={(video) => setState(prev => ({ ...prev, video }))} onClose={() => setActiveModal(null)} />;
       case 'camera': return <CameraModal state={state} onUpdate={(camera) => setState(prev => ({ ...prev, camera }))} onClose={() => setActiveModal(null)} />;
+      case 'entertainment': return <EntertainmentModal state={state} onSelect={(id) => setState(prev => ({ ...prev, activeEntertainment: id }))} onClose={() => setActiveModal(null)} />;
       default: return null;
     }
   };
@@ -220,6 +226,16 @@ export default function App() {
               )}
             </div>
           </motion.div>
+        )}
+
+        {/* Entertainment Tool View */}
+        {state.activeEntertainment && (
+          <div className="absolute inset-0 z-50 pointer-events-auto">
+            <EntertainmentToolView 
+              toolId={state.activeEntertainment} 
+              onClose={() => setState(prev => ({ ...prev, activeEntertainment: null }))} 
+            />
+          </div>
         )}
 
         {/* Real Camera Window */}
@@ -329,7 +345,7 @@ export default function App() {
                 <SidebarIcon icon={<Video size={24} />} label="视频" onClick={() => setActiveModal('video')} active={activeModal === 'video'} />
                 <SidebarIcon icon={<Mic size={24} />} label="语音" onClick={() => setActiveModal('audio')} active={activeModal === 'audio'} />
                 <SidebarIcon icon={<User size={24} />} label="数字人" onClick={() => setActiveModal('digital-human')} active={activeModal === 'digital-human'} />
-                <SidebarIcon icon={<Gamepad2 size={24} />} label="娱乐" onClick={() => {}} />
+                <SidebarIcon icon={<Gamepad2 size={24} />} label="娱乐" onClick={() => setActiveModal('entertainment')} active={activeModal === 'entertainment'} />
                 <SidebarIcon icon={<ImageIcon size={24} />} label="图片" onClick={() => {}} />
                 <SidebarIcon icon={<Sparkles size={24} />} label="特效" onClick={() => setActiveModal('components')} active={activeModal === 'components'} />
                 <SidebarIcon icon={<Camera size={24} />} label="摄像头" onClick={() => setActiveModal('camera')} active={activeModal === 'camera'} />
@@ -338,7 +354,7 @@ export default function App() {
               {/* Right Sidebar */}
               <div className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 flex flex-col gap-4 md:gap-6 scale-90 md:scale-100">
                 <SidebarIcon icon={<BarChart3 size={24} />} label="数据" onClick={() => {}} />
-                <SidebarIcon icon={<Trash2 size={24} />} label="清屏" onClick={() => setState(prev => ({ ...prev, activeComponents: [], activeEffect: null, selectedDigitalHuman: null, camera: { ...prev.camera, enabled: false } }))} />
+                <SidebarIcon icon={<Trash2 size={24} />} label="清屏" onClick={() => setState(prev => ({ ...prev, activeComponents: [], activeEffect: null, selectedDigitalHuman: null, activeEntertainment: null, camera: { ...prev.camera, enabled: false } }))} />
                 <SidebarIcon icon={<Smartphone size={24} />} label="竖屏" onClick={() => {}} />
                 <SidebarIcon icon={<HelpCircle size={24} />} label="帮助" onClick={() => {}} />
               </div>
@@ -803,4 +819,384 @@ function getFilterClass(f: DeDuplicationFilter) {
     case 'filter5': return 'hue-rotate-15 saturate-150';
     default: return '';
   }
+}
+
+function EntertainmentModal({ state, onSelect, onClose }: { state: AppState, onSelect: (id: string | null) => void, onClose: () => void }) {
+  return (
+    <div className="h-full flex flex-col bg-[#F8FBFF] relative overflow-hidden">
+      {/* Abstract Background Pattern */}
+      <div className="absolute inset-0 opacity-30 pointer-events-none">
+        <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] bg-blue-200 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] bg-purple-200 rounded-full blur-[120px]" />
+      </div>
+
+      <div className="relative z-10 flex flex-col h-full p-6">
+        <div className="flex justify-between items-center mb-8">
+          <h2 className="text-3xl font-black text-[#1A237E] tracking-tight">推荐</h2>
+          <button onClick={onClose} className="p-2 bg-black/5 rounded-full hover:bg-black/10 transition-colors">
+            <X size={24} className="text-[#1A237E]" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-5">
+          {ENTERTAINMENT_TOOLS.map((tool) => (
+            <div
+              key={tool.id}
+              className="flex items-center gap-4 p-5 rounded-[28px] bg-white shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-white/60 transition-all hover:shadow-[0_15px_50px_rgba(0,0,0,0.06)] hover:-translate-y-1 active:scale-[0.98]"
+            >
+              <div className={`w-16 h-16 shrink-0 flex items-center justify-center rounded-[20px] text-3xl shadow-lg ${
+                tool.id === 'phone' ? 'bg-[#FF5252]' :
+                tool.id === 'car' ? 'bg-[#448AFF]' :
+                tool.id === 'birthday' ? 'bg-[#4CAF50]' :
+                tool.id === 'constellation' ? 'bg-[#FFD740]' :
+                'bg-[#7C4DFF]'
+              }`}>
+                {tool.icon}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-lg text-[#1A237E] truncate">{tool.name}</h3>
+                <p className="text-[11px] text-[#1A237E]/50 line-clamp-2 leading-tight font-semibold mt-0.5">{tool.description}</p>
+              </div>
+              <button
+                onClick={() => {
+                  onSelect(tool.id);
+                  onClose();
+                }}
+                className="px-6 py-2.5 bg-[#2979FF] hover:bg-[#2962FF] text-white text-sm font-black rounded-full shadow-xl shadow-blue-500/25 transition-all active:scale-90 shrink-0"
+              >
+                立即测试
+              </button>
+            </div>
+          ))}
+        </div>
+        
+        <div className="mt-6 pt-4">
+          <button 
+            className="w-full bg-[#1A237E] text-white py-4 rounded-2xl font-black shadow-2xl shadow-indigo-900/30 transition-all active:scale-95 text-lg" 
+            onClick={onClose}
+          >
+            返回主页
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EntertainmentToolView({ toolId, onClose }: { toolId: string, onClose: () => void }) {
+  const tool = ENTERTAINMENT_TOOLS.find(t => t.id === toolId);
+  if (!tool) return null;
+
+  const renderToolContent = () => {
+    switch (toolId) {
+      case 'zodiac':
+        return (
+          <div className="flex flex-col h-full bg-[#FFB347] relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none bg-[radial-gradient(circle_at_center,_#fff_0%,_transparent_70%)]" />
+            
+            {/* Header Banner */}
+            <div className="mt-8 mx-auto relative z-10">
+              <div className="bg-[#5C6BC0] px-12 py-2 rounded-full border-4 border-[#9FA8DA] shadow-lg">
+                <h2 className="text-white text-xl font-bold tracking-[0.2em]">生肖测评</h2>
+              </div>
+            </div>
+
+            {/* Main Card */}
+            <div className="mt-6 mx-4 bg-white rounded-[32px] p-6 shadow-2xl relative z-10">
+              <div className="space-y-4">
+                <div className="bg-[#E3F2FD] p-4 rounded-full flex items-center gap-4 shadow-inner">
+                  <span className="text-[#1A237E] font-bold shrink-0">生肖(男):</span>
+                  <span className="text-[#1A237E] font-bold">鼠</span>
+                </div>
+                <div className="bg-[#E3F2FD] p-4 rounded-full flex items-center gap-4 shadow-inner">
+                  <span className="text-[#1A237E] font-bold shrink-0">生肖(女):</span>
+                  <span className="text-[#1A237E] font-bold">鼠</span>
+                </div>
+              </div>
+
+              <button className="mt-8 w-full relative group">
+                <div className="absolute inset-0 bg-[#D84315] rounded-full blur-sm group-hover:blur-md transition-all" />
+                <div className="relative bg-gradient-to-b from-[#FFF176] to-[#FBC02D] border-4 border-[#FFEB3B] rounded-full py-3 shadow-lg">
+                  <span className="text-[#BF360C] text-2xl font-black tracking-[0.3em]">立即测算</span>
+                </div>
+              </button>
+            </div>
+
+            {/* Results Table */}
+            <div className="mt-8 flex-1 flex flex-col">
+              <div className="bg-[#F06292] py-3 px-6 flex justify-between text-white font-bold text-lg">
+                <span>生肖(男+女)</span>
+                <span>幸福指数</span>
+                <span>寓意</span>
+              </div>
+              <div className="flex-1 bg-transparent py-4 px-6 flex justify-between text-[#1A237E] font-bold text-xl">
+                <span>鼠鼠</span>
+                <span>92%</span>
+                <span>天伦之乐</span>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'constellation':
+        return (
+          <div className="flex flex-col h-full bg-[#1A237E] relative overflow-hidden">
+            {/* Space Background */}
+            <div className="absolute inset-0 opacity-40">
+              <div className="absolute top-10 left-10 w-20 h-20 bg-red-500 rounded-full blur-3xl animate-pulse" />
+              <div className="absolute bottom-20 right-10 w-32 h-32 bg-blue-500 rounded-full blur-3xl" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]" />
+            </div>
+            
+            {/* Header Banner */}
+            <div className="mt-8 mx-auto relative z-10">
+              <div className="bg-[#5C6BC0] px-12 py-2 rounded-full border-4 border-[#9FA8DA] shadow-lg">
+                <h2 className="text-white text-xl font-bold tracking-[0.2em]">星座测评</h2>
+              </div>
+            </div>
+
+            {/* Main Card */}
+            <div className="mt-6 mx-4 bg-white rounded-[32px] p-6 shadow-2xl relative z-10">
+              <div className="space-y-4">
+                <div className="bg-[#E3F2FD] p-4 rounded-full flex items-center gap-4 shadow-inner">
+                  <span className="text-[#1A237E] font-bold shrink-0">男星座:</span>
+                  <span className="text-[#1A237E] font-bold">白羊座</span>
+                </div>
+                <div className="bg-[#E3F2FD] p-4 rounded-full flex items-center gap-4 shadow-inner">
+                  <span className="text-[#1A237E] font-bold shrink-0">女星座:</span>
+                  <span className="text-[#1A237E] font-bold">白羊座</span>
+                </div>
+              </div>
+
+              <button className="mt-8 w-full relative group">
+                <div className="absolute inset-0 bg-[#D84315] rounded-full blur-sm group-hover:blur-md transition-all" />
+                <div className="relative bg-gradient-to-b from-[#FFF176] to-[#FBC02D] border-4 border-[#FFEB3B] rounded-full py-3 shadow-lg">
+                  <span className="text-[#BF360C] text-2xl font-black tracking-[0.3em]">立即测算</span>
+                </div>
+              </button>
+            </div>
+
+            {/* Results Table */}
+            <div className="mt-8 flex-1 flex flex-col">
+              <div className="bg-[#FF0000] py-3 px-6 flex justify-between text-white font-bold text-lg">
+                <span>星座(男+女)</span>
+                <span>幸福指数</span>
+                <span>寓意</span>
+              </div>
+              <div className="flex-1 bg-transparent py-4 px-6 flex justify-between text-white font-bold text-xl">
+                <span>白羊座白羊座</span>
+                <span className="flex items-center gap-1"><Heart size={20} fill="red" className="text-red-500" /> 75</span>
+                <span>凤凰于飞</span>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'birthday':
+        return (
+          <div className="flex flex-col h-full bg-[#7986CB] relative overflow-hidden">
+            {/* Header Banner */}
+            <div className="mt-8 mx-auto relative z-10">
+              <div className="bg-[#5C6BC0] px-12 py-2 rounded-full border-4 border-[#9FA8DA] shadow-lg">
+                <h2 className="text-white text-xl font-bold tracking-[0.1em]">请输入测试所需信息</h2>
+              </div>
+            </div>
+
+            {/* Main Card */}
+            <div className="mt-6 mx-4 bg-white rounded-[32px] p-6 shadow-2xl relative z-10">
+              <div className="space-y-4">
+                <div className="bg-[#E3F2FD] p-4 rounded-full flex items-center gap-4 shadow-inner">
+                  <span className="text-[#1A237E] font-bold shrink-0">生辰:</span>
+                  <span className="text-[#1A237E] font-bold">2013-01-01</span>
+                </div>
+              </div>
+
+              <button className="mt-8 w-full relative group">
+                <div className="absolute inset-0 bg-[#D84315] rounded-full blur-sm group-hover:blur-md transition-all" />
+                <div className="relative bg-gradient-to-b from-[#FFF176] to-[#FBC02D] border-4 border-[#FFEB3B] rounded-full py-3 shadow-lg">
+                  <span className="text-[#BF360C] text-2xl font-black tracking-[0.3em]">立即测算</span>
+                </div>
+              </button>
+            </div>
+
+            {/* Results Table */}
+            <div className="mt-8 flex-1 flex flex-col">
+              <div className="py-3 px-6 flex justify-between text-white font-bold text-xl">
+                <span>生辰</span>
+                <span>评分:</span>
+                <span>寓意</span>
+              </div>
+              <div className="flex-1 bg-transparent py-4 px-6 flex justify-between text-white font-bold text-xl">
+                <span>2013-01-01</span>
+                <span>99</span>
+                <span>合家欢乐开开心心</span>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'car':
+        return (
+          <div className="flex flex-col h-full bg-[#B71C1C] relative overflow-hidden">
+            {/* Festive Background */}
+            <div className="absolute inset-0">
+              <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-[#FFD54F]/20 to-transparent" />
+              <img src="https://picsum.photos/seed/car_bg/800/1200" className="absolute inset-0 w-full h-full object-cover opacity-30" referrerPolicy="no-referrer" />
+            </div>
+
+            {/* Title */}
+            <div className="mt-12 mx-auto relative z-10 text-center">
+              <h1 className="text-5xl font-black text-[#FFD54F] drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)] italic tracking-tighter">
+                车牌吉运鉴定
+              </h1>
+            </div>
+
+            {/* Main Card */}
+            <div className="mt-8 mx-4 bg-white rounded-2xl p-6 shadow-2xl relative z-10 border-4 border-[#FFD54F]/30">
+              <h3 className="text-[#B71C1C] text-xl font-bold text-center mb-6">车牌号评测</h3>
+              <div className="border-2 border-[#E0E0E0] rounded-full p-4 flex items-center gap-4">
+                <span className="text-black font-bold shrink-0">车牌号:</span>
+                <span className="text-black font-bold">晋D34553</span>
+              </div>
+
+              <button className="mt-8 w-full relative group">
+                <div className="absolute inset-0 bg-[#D84315] rounded-full blur-sm" />
+                <div className="relative bg-gradient-to-b from-[#FFF176] to-[#FBC02D] border-2 border-[#FFEB3B] rounded-full py-3 shadow-lg">
+                  <span className="text-[#BF360C] text-xl font-black tracking-[0.2em]">立即鉴定</span>
+                </div>
+              </button>
+            </div>
+
+            {/* Results Display */}
+            <div className="mt-8 mx-4 relative z-10 flex flex-col overflow-hidden rounded-xl shadow-2xl">
+              <div className="bg-[#0D47A1] py-4 text-center">
+                <span className="text-white text-4xl font-black tracking-widest">晋D34553</span>
+              </div>
+              <div className="grid grid-cols-2">
+                <div className="bg-[#BDBDBD] p-4 text-center border-r border-white/20">
+                  <span className="text-[#0D47A1] font-bold text-lg">车牌估值</span>
+                </div>
+                <div className="bg-white p-4 text-center">
+                  <span className="text-[#0D47A1] font-black text-2xl tracking-tighter">28728元</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2">
+                <div className="bg-[#0D47A1] p-2 text-center border-r border-white/20">
+                  <span className="text-white font-bold">车牌归属</span>
+                </div>
+                <div className="bg-[#0D47A1] p-2 text-center">
+                  <span className="text-white font-bold">山西·长治</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2">
+                <div className="bg-[#BDBDBD] p-2 text-center border-r border-white/20">
+                  <span className="text-[#0D47A1] font-bold">寓意:</span>
+                </div>
+                <div className="bg-[#BDBDBD] p-2 text-center">
+                  <span className="text-[#0D47A1] font-bold">路路畅通</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'phone':
+        return (
+          <div className="flex flex-col h-full bg-[#F44336] relative overflow-hidden">
+            {/* Koi Background */}
+            <div className="absolute top-0 left-0 w-full h-64">
+              <img src="https://picsum.photos/seed/koi/800/400" className="w-full h-full object-cover opacity-60" referrerPolicy="no-referrer" />
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#F44336]" />
+            </div>
+
+            {/* Title */}
+            <div className="mt-12 mx-auto relative z-10 text-center">
+              <h1 className="text-5xl font-black text-white drop-shadow-lg italic leading-tight">
+                手机号码<br/>幸运测试
+              </h1>
+            </div>
+
+            {/* Main Card */}
+            <div className="mt-8 mx-4 bg-white rounded-xl p-1 shadow-2xl relative z-10">
+              <div className="border-4 border-[#FFD54F] rounded-lg p-6">
+                <h3 className="text-[#B71C1C] text-xl font-bold text-center mb-6">手机后四位测试</h3>
+                <div className="flex items-center gap-4 mb-8">
+                  <span className="text-black font-bold shrink-0">手机后四位</span>
+                  <div className="flex-1 bg-[#F5F5F5] p-3 rounded text-black font-bold">1111</div>
+                </div>
+                <button className="w-full bg-gradient-to-r from-[#FF9800] to-[#F57C00] py-3 rounded-lg text-white font-bold text-xl shadow-lg">
+                  查看结果
+                </button>
+              </div>
+            </div>
+
+            {/* Results Table */}
+            <div className="mt-8 px-4 relative z-10">
+              <div className="flex justify-between text-[#B71C1C] font-bold text-lg mb-4">
+                <span>手机尾号</span>
+                <span>估值</span>
+                <span>优秀程度</span>
+                <span>寓意</span>
+              </div>
+              <div className="flex justify-between text-[#B71C1C] font-bold text-xl">
+                <span>1111</span>
+                <span>95516</span>
+                <span>牛掰</span>
+                <span>花开富贵</span>
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        return (
+          <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-white/5">
+            <div className="text-6xl mb-6">{tool.icon}</div>
+            <h3 className="text-2xl font-bold mb-4">{tool.name}</h3>
+            <p className="text-white/60">{tool.description}</p>
+          </div>
+        );
+    }
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onDoubleClick={onClose}
+      className="relative w-full h-full bg-black overflow-hidden shadow-2xl cursor-pointer"
+      title="双击返回编辑模式"
+    >
+      {/* Content */}
+      <div className="h-full relative select-none">
+        {renderToolContent()}
+        
+        {/* Double Click Hint Overlay (Fade out after 3s) */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: [0, 1, 1, 0], y: [20, 0, 0, 20] }}
+          transition={{ duration: 4, times: [0, 0.1, 0.8, 1] }}
+          className="absolute bottom-10 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
+        >
+          <div className="bg-black/40 backdrop-blur-md px-6 py-2 rounded-full border border-white/10">
+            <span className="text-white/80 text-xs font-bold tracking-widest uppercase">双击屏幕返回编辑模式</span>
+          </div>
+        </motion.div>
+
+        {/* Close Button Overlay */}
+        <button 
+          onClick={onClose}
+          className="absolute top-4 right-4 z-50 p-2 bg-black/20 hover:bg-black/40 rounded-full backdrop-blur-md transition-colors"
+        >
+          <X size={24} className="text-white" />
+        </button>
+
+        {/* Settings Icon Overlay (matches Image 1/2/3/4) */}
+        <button className="absolute top-4 right-16 z-50 p-2 text-black/40 hover:text-black/60 transition-colors">
+          <Settings2 size={32} />
+        </button>
+      </div>
+    </motion.div>
+  );
 }

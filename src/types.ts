@@ -56,5 +56,6 @@ export interface AppState {
   activeComponents: string[];
   componentStates: Record<string, { scale: number }>;
   activeEffect: string | null;
+  activeEntertainment: string | null;
   isLive: boolean;
 }

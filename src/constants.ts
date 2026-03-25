@@ -6,6 +6,14 @@ export const DIGITAL_HUMANS: DigitalHuman[] = [
   { id: 'xiaomo', name: '晓墨', thumbnail: 'https://picsum.photos/seed/human3/200/300' },
 ];
 
+export const ENTERTAINMENT_TOOLS = [
+  { id: 'phone', name: '手机尾号测评', description: '你想知道你的手机号是不是吉祥号以及寓意吗？', icon: '📱' },
+  { id: 'car', name: '车牌号测评', description: '测试爱车吉号，保你一路旺又发', icon: '🚗' },
+  { id: 'birthday', name: '生日号测评', description: '全面详批，解析您一生大运的起伏变化', icon: '🎁' },
+  { id: 'constellation', name: '星座测评', description: '星盘解读人生，分析星座性格', icon: '♈' },
+  { id: 'zodiac', name: '生肖测评', description: '了解未来财富动向、事业发展', icon: '🐉' },
+];
+
 export const LIVE_COMPONENTS: LiveComponent[] = [
   { id: 'click_bell', name: '点击小铃铛', icon: '🔔', type: 'button' },
   { id: 'click_car', name: '点击小风车', icon: '🎡', type: 'button' },
