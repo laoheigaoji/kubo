@@ -23,12 +23,20 @@ import {
   Heart,
   Star,
   Calendar,
-  Zap
+  Zap,
+  Search,
+  Plus,
+  FileText,
+  ChevronRight,
+  Pause,
+  RotateCcw,
+  Clipboard
 } from 'lucide-react';
 import { 
   AppState, 
   VideoSettings, 
   AudioSettings, 
+  AudioLibraryItem,
   CameraSettings,
   VideoSize, 
   MirrorEffect, 
@@ -57,6 +65,7 @@ const INITIAL_STATE: AppState = {
     volume: 100,
     interval: 0,
     localAudioUrl: null,
+    library: [],
   },
   camera: {
     enabled: false,
@@ -488,101 +497,440 @@ function DigitalHumanModal({ state, onSelect, onClose }: { state: AppState, onSe
 }
 
 function AudioModal({ state, onUpdate, onClose }: { state: AppState, onUpdate: (audio: AudioSettings) => void, onClose: () => void }) {
+  const [view, setView] = useState<'library' | 'record' | 'tts'>('library');
+  const [showAddOptions, setShowAddOptions] = useState(false);
+  const [activeTab, setActiveTab] = useState<'script' | 'product' | 'reply'>('script');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredLibrary = state.audio.library.filter(item => 
+    item.type === activeTab && 
+    item.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleSaveAudio = (item: AudioLibraryItem) => {
+    onUpdate({
+      ...state.audio,
+      library: [item, ...state.audio.library]
+    });
+    setView('library');
+  };
+
+  if (view === 'record') {
+    return <RecordVoiceView onBack={() => setView('library')} onSave={handleSaveAudio} />;
+  }
+
+  if (view === 'tts') {
+    return <TTSView onBack={() => setView('library')} onSave={handleSaveAudio} />;
+  }
+
   return (
-    <div>
-      <div className="flex justify-between items-center mb-8">
-        <h2 className="text-2xl font-bold">语音</h2>
-        <button onClick={onClose} className="p-2 bg-white/10 rounded-full"><X size={20} /></button>
+    <div className="relative min-h-[600px] flex flex-col">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
+        <button onClick={onClose} className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors">
+          <ChevronLeft size={24} />
+        </button>
+        <h2 className="text-xl font-bold">语音库</h2>
+        <button 
+          onClick={() => setShowAddOptions(true)}
+          className="bg-emerald-500 hover:bg-emerald-600 px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-1"
+        >
+          添加语音
+        </button>
       </div>
-      
-      <div className="space-y-8">
-        <section>
-          <h3 className="text-lg font-bold mb-4">语音</h3>
-          <div className="flex gap-8">
-            <Radio label="开启" checked={state.audio.enabled} onChange={() => onUpdate({ ...state.audio, enabled: true })} />
-            <Radio label="关闭" checked={!state.audio.enabled} onChange={() => onUpdate({ ...state.audio, enabled: false })} />
-          </div>
-        </section>
 
-        <section>
-          <h3 className="text-lg font-bold mb-4">播放模式</h3>
-          <div className="flex gap-8">
-            <Radio label="顺序播放" checked={state.audio.mode === 'sequential'} onChange={() => onUpdate({ ...state.audio, mode: 'sequential' })} />
-            <Radio label="随机播放" checked={state.audio.mode === 'random'} onChange={() => onUpdate({ ...state.audio, mode: 'random' })} />
-          </div>
-        </section>
+      {/* Search Bar */}
+      <div className="relative mb-6">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" size={18} />
+        <input 
+          type="text" 
+          placeholder="请输入关键词搜索" 
+          className="w-full bg-white/5 border border-white/10 rounded-full py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-emerald-500/50 transition-colors"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
 
-        <section>
-          <div className="flex justify-between mb-4">
-            <h3 className="text-lg font-bold">音量</h3>
-            <span className="text-emerald-500 font-bold">{state.audio.volume}</span>
-          </div>
-          <input 
-            type="range" 
-            className="w-full accent-emerald-500" 
-            value={state.audio.volume} 
-            onChange={e => onUpdate({ ...state.audio, volume: parseInt(e.target.value) })} 
-          />
-        </section>
+      {/* Tabs */}
+      <div className="flex border-b border-white/5 mb-6">
+        {(['script', 'product', 'reply'] as const).map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`flex-1 py-3 text-sm font-medium transition-colors relative ${activeTab === tab ? 'text-white' : 'text-white/40 hover:text-white/60'}`}
+          >
+            {tab === 'script' ? '话术语音' : tab === 'product' ? '商品语音' : '回复语音'}
+            {activeTab === tab && (
+              <motion.div layoutId="activeTab" className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-emerald-500 rounded-full" />
+            )}
+          </button>
+        ))}
+      </div>
 
-        <section>
-          <div className="flex justify-between mb-4">
-            <h3 className="text-lg font-bold">播放间隔</h3>
-            <span className="text-emerald-500 font-bold">{state.audio.interval}s</span>
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
+        {filteredLibrary.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full py-20 opacity-40">
+            <Music size={48} className="mb-4" />
+            <p className="text-sm">暂无语音，请添加</p>
           </div>
-          <input 
-            type="range" 
-            className="w-full accent-emerald-500" 
-            value={state.audio.interval} 
-            onChange={e => onUpdate({ ...state.audio, interval: parseInt(e.target.value) })} 
-          />
-        </section>
-
-        <section>
-          <h3 className="text-lg font-bold mb-4">音频源</h3>
-          <div className="mt-4">
-            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-white/20 rounded-xl cursor-pointer hover:bg-white/5 transition-colors">
-              <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                <Music className="w-8 h-8 mb-3 text-white/40" />
-                <div className="flex flex-col items-center justify-center">
-                  <p className="mb-2 text-sm text-white/60">
-                    <span className="font-semibold">点击上传本地音频</span>
-                  </p>
-                  <p className="text-xs text-white/40">MP3, WAV, OGG (MAX. 20MB)</p>
+        ) : (
+          <div className="space-y-3">
+            {filteredLibrary.map(item => (
+              <div key={item.id} className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center justify-between hover:bg-white/10 transition-colors group">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-500">
+                    <Volume2 size={20} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm">{item.name}</h4>
+                    <p className="text-[10px] text-white/40 mt-0.5">{item.duration} | {item.createdAt}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button className="p-2 hover:bg-white/10 rounded-lg text-white/60 hover:text-white transition-colors">
+                    <Play size={16} fill="currentColor" />
+                  </button>
+                  <button 
+                    onClick={() => {
+                      onUpdate({
+                        ...state.audio,
+                        library: state.audio.library.filter(i => i.id !== item.id)
+                      });
+                    }}
+                    className="p-2 hover:bg-red-500/20 rounded-lg text-white/40 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </div>
               </div>
-              <input 
-                type="file" 
-                className="hidden" 
-                accept="audio/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    const url = URL.createObjectURL(file);
-                    onUpdate({ ...state.audio, localAudioUrl: url });
-                  }
-                }}
-              />
-            </label>
-            {state.audio.localAudioUrl && (
-              <div className="mt-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-between">
-                <div className="flex items-center gap-2 overflow-hidden">
-                  <Music size={16} className="text-emerald-500 shrink-0" />
-                  <span className="text-xs text-emerald-500 truncate">音频已加载</span>
-                </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Floating TTS Button */}
+      <button 
+        onClick={() => setView('tts')}
+        className="absolute bottom-4 left-4 w-14 h-14 rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 shadow-lg shadow-indigo-500/20 flex flex-col items-center justify-center gap-0.5 active:scale-95 transition-transform border border-white/20"
+      >
+        <span className="text-[10px] font-bold leading-none">语音</span>
+        <span className="text-[10px] font-bold leading-none">合成</span>
+      </button>
+
+      {/* Add Options Modal */}
+      <AnimatePresence>
+        {showAddOptions && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-6"
+            onClick={() => setShowAddOptions(false)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-[#2c2c2e] w-full max-w-xs rounded-2xl overflow-hidden shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="p-6 border-b border-white/5">
+                <h3 className="text-center font-bold text-lg">请选择添加方式</h3>
+              </div>
+              <div className="flex flex-col">
                 <button 
-                  onClick={() => onUpdate({ ...state.audio, localAudioUrl: null })}
-                  className="text-white/40 hover:text-white transition-colors"
+                  className="py-5 px-6 hover:bg-white/5 transition-colors text-center font-medium border-b border-white/5"
+                  onClick={() => {
+                    // Simulate file selection
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'audio/*';
+                    input.onchange = (e) => {
+                      const file = (e.target as HTMLInputElement).files?.[0];
+                      if (file) {
+                        handleSaveAudio({
+                          id: Math.random().toString(36).substr(2, 9),
+                          name: file.name.split('.')[0],
+                          type: activeTab,
+                          url: URL.createObjectURL(file),
+                          duration: '00:00',
+                          createdAt: new Date().toLocaleDateString()
+                        });
+                      }
+                    };
+                    input.click();
+                    setShowAddOptions(false);
+                  }}
                 >
-                  <X size={14} />
+                  从手机中选择
+                </button>
+                <button 
+                  className="py-5 px-6 hover:bg-white/5 transition-colors text-center font-medium"
+                  onClick={() => {
+                    setView('record');
+                    setShowAddOptions(false);
+                  }}
+                >
+                  录制语音
                 </button>
               </div>
-            )}
-          </div>
-        </section>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
-        <button className="w-full bg-emerald-600 py-4 rounded-xl font-bold mt-4" onClick={onClose}>完成</button>
+function RecordVoiceView({ onBack, onSave }: { onBack: () => void, onSave: (item: AudioLibraryItem) => void }) {
+  const [isRecording, setIsRecording] = useState(false);
+  const [timer, setTimer] = useState(0);
+  const [name, setName] = useState('');
+  const [script, setScript] = useState('');
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (isRecording) {
+      intervalRef.current = setInterval(() => {
+        setTimer(t => t + 1);
+      }, 1000);
+    } else {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    }
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [isRecording]);
+
+  const formatTime = (seconds: number) => {
+    const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
+    const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${h}:${m}:${s}`;
+  };
+
+  const handleToggleRecording = () => {
+    if (isRecording) {
+      setIsRecording(false);
+    } else {
+      setIsRecording(true);
+      setTimer(0);
+    }
+  };
+
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      setScript(text);
+    } catch (err) {
+      console.error('Failed to read clipboard', err);
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-full min-h-[600px]">
+      <div className="flex justify-between items-center mb-6">
+        <button onClick={onBack} className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors">
+          <ChevronLeft size={24} />
+        </button>
+        <h2 className="text-xl font-bold">录制语音文件</h2>
+        <div className="w-10" />
       </div>
+
+      <div className="space-y-4 flex-1">
+        {/* Name Input */}
+        <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center justify-between">
+          <span className="font-bold text-sm">名称:</span>
+          <input 
+            type="text" 
+            placeholder="请填写名称" 
+            className="bg-transparent text-right text-sm focus:outline-none placeholder:text-white/20"
+            value={name}
+            onChange={e => setName(e.target.value)}
+          />
+        </div>
+
+        {/* Timer Card */}
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-8 flex flex-col items-center gap-6">
+          <div className="text-5xl font-mono tracking-wider">{formatTime(timer)}</div>
+          <button 
+            onClick={handleToggleRecording}
+            className={`px-8 py-3 rounded-xl font-bold transition-all active:scale-95 flex items-center gap-2 ${isRecording ? 'bg-red-500 hover:bg-red-600' : 'bg-emerald-500 hover:bg-emerald-600'}`}
+          >
+            {isRecording ? <Pause size={20} /> : <Mic size={20} />}
+            {isRecording ? '停止录音' : '开始录音'}
+          </button>
+        </div>
+
+        {/* Script Area */}
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col gap-4">
+          <textarea 
+            className="w-full h-40 bg-white/5 rounded-xl p-4 text-sm resize-none focus:outline-none placeholder:text-white/20"
+            placeholder="请粘贴需要录制的语音文本"
+            value={script}
+            onChange={e => setScript(e.target.value)}
+          />
+          <div className="flex justify-center">
+            <button 
+              onClick={handlePaste}
+              className="bg-emerald-500 hover:bg-emerald-600 px-8 py-2.5 rounded-xl font-bold text-sm transition-colors flex items-center gap-2"
+            >
+              <Clipboard size={18} />
+              粘贴文本
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <button 
+        onClick={() => {
+          if (!name) return;
+          onSave({
+            id: Math.random().toString(36).substr(2, 9),
+            name,
+            type: 'script',
+            url: '', // In a real app, this would be the recorded blob URL
+            duration: formatTime(timer).substring(3),
+            createdAt: new Date().toLocaleDateString()
+          });
+        }}
+        className="w-full bg-emerald-500 hover:bg-emerald-600 py-4 rounded-xl font-bold mt-6 shadow-lg shadow-emerald-500/20 active:scale-95 transition-transform"
+      >
+        保存录音
+      </button>
+    </div>
+  );
+}
+
+function TTSView({ onBack, onSave }: { onBack: () => void, onSave: (item: AudioLibraryItem) => void }) {
+  const [name, setName] = useState('');
+  const [text, setText] = useState('');
+  const [speed, setSpeed] = useState(1.0);
+  const [volume, setVolume] = useState(100);
+  const [pitch, setPitch] = useState(0);
+  const [isSynthesizing, setIsSynthesizing] = useState(false);
+
+  const handleSynthesize = () => {
+    setIsSynthesizing(true);
+    setTimeout(() => {
+      setIsSynthesizing(false);
+      // In a real app, this would trigger the actual TTS engine
+    }, 2000);
+  };
+
+  return (
+    <div className="flex flex-col h-full min-h-[600px]">
+      <div className="flex justify-between items-center mb-6">
+        <button onClick={onBack} className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors">
+          <ChevronLeft size={24} />
+        </button>
+        <h2 className="text-xl font-bold">文字合成语音</h2>
+        <div className="w-10" />
+      </div>
+
+      <div className="space-y-4 flex-1">
+        {/* Name Input */}
+        <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center justify-between">
+          <span className="font-bold text-sm">名称:</span>
+          <input 
+            type="text" 
+            placeholder="请填写名称" 
+            className="bg-transparent text-right text-sm focus:outline-none placeholder:text-white/20"
+            value={name}
+            onChange={e => setName(e.target.value)}
+          />
+        </div>
+
+        {/* Text Area */}
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="font-bold text-sm">文案: (不超过300个字)</span>
+            <span className="text-[10px] text-white/40">{text.length}/300</span>
+          </div>
+          <textarea 
+            className="w-full h-40 bg-transparent text-sm resize-none focus:outline-none placeholder:text-white/20"
+            placeholder="请输入语音文案"
+            maxLength={300}
+            value={text}
+            onChange={e => setText(e.target.value)}
+          />
+        </div>
+
+        {/* Settings Card */}
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-6">
+          <div className="flex justify-between items-center">
+            <span className="font-bold text-sm">声音:</span>
+            <button className="text-sm text-white/40 hover:text-white flex items-center gap-1">
+              请选择 <ChevronRight size={16} />
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <span className="text-xs text-white/60 w-12">语速:</span>
+              <input 
+                type="range" 
+                min="0.5" max="2.0" step="0.1"
+                className="flex-1 accent-emerald-500"
+                value={speed}
+                onChange={e => setSpeed(parseFloat(e.target.value))}
+              />
+              <span className="text-xs font-mono w-8 text-right">{speed.toFixed(1)}</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-xs text-white/60 w-12">音量:</span>
+              <input 
+                type="range" 
+                min="0" max="100"
+                className="flex-1 accent-emerald-500"
+                value={volume}
+                onChange={e => setVolume(parseInt(e.target.value))}
+              />
+              <span className="text-xs font-mono w-8 text-right">{volume}</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-xs text-white/60 w-12">音调:</span>
+              <input 
+                type="range" 
+                min="-10" max="10"
+                className="flex-1 accent-emerald-500"
+                value={pitch}
+                onChange={e => setPitch(parseInt(e.target.value))}
+              />
+              <span className="text-xs font-mono w-8 text-right">{pitch}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-center">
+          <button 
+            onClick={handleSynthesize}
+            disabled={isSynthesizing}
+            className="bg-emerald-500 hover:bg-emerald-600 px-12 py-3 rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2"
+          >
+            {isSynthesizing ? <RotateCcw size={20} className="animate-spin" /> : <Sparkles size={20} />}
+            {isSynthesizing ? '合成中...' : '合成'}
+          </button>
+        </div>
+      </div>
+
+      <button 
+        onClick={() => {
+          if (!name) return;
+          onSave({
+            id: Math.random().toString(36).substr(2, 9),
+            name,
+            type: 'script',
+            url: '',
+            duration: '00:15',
+            createdAt: new Date().toLocaleDateString()
+          });
+        }}
+        className="w-full bg-emerald-500 hover:bg-emerald-600 py-4 rounded-xl font-bold mt-6 shadow-lg shadow-emerald-500/20 active:scale-95 transition-transform"
+      >
+        保存语音
+      </button>
     </div>
   );
 }
@@ -885,7 +1233,73 @@ function EntertainmentModal({ state, onSelect, onClose }: { state: AppState, onS
 
 function EntertainmentToolView({ toolId, onClose }: { toolId: string, onClose: () => void }) {
   const tool = ENTERTAINMENT_TOOLS.find(t => t.id === toolId);
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [results, setResults] = useState<any>(null);
+  const [inputs, setInputs] = useState<any>({});
+
   if (!tool) return null;
+
+  const handleCalculate = () => {
+    setIsCalculating(true);
+    // Simulate calculation time
+    setTimeout(() => {
+      let newResult = {};
+      switch (toolId) {
+        case 'zodiac':
+          const zodiacs = ['鼠', '牛', '虎', '兔', '龙', '蛇', '马', '羊', '猴', '鸡', '狗', '猪'];
+          const meanings = ['天伦之乐', '相敬如宾', '龙凤呈祥', '百年好合', '心心相印', '白头偕老'];
+          newResult = {
+            male: inputs.male || zodiacs[Math.floor(Math.random() * zodiacs.length)],
+            female: inputs.female || zodiacs[Math.floor(Math.random() * zodiacs.length)],
+            score: Math.floor(Math.random() * 20) + 80 + '%',
+            meaning: meanings[Math.floor(Math.random() * meanings.length)]
+          };
+          break;
+        case 'constellation':
+          const constellations = ['白羊座', '金牛座', '双子座', '巨蟹座', '狮子座', '处女座', '天秤座', '天蝎座', '射手座', '摩羯座', '水瓶座', '双鱼座'];
+          const cMeanings = ['凤凰于飞', '琴瑟和鸣', '珠联璧合', '佳偶天成', '相濡以沫'];
+          newResult = {
+            male: inputs.male || constellations[Math.floor(Math.random() * constellations.length)],
+            female: inputs.female || constellations[Math.floor(Math.random() * constellations.length)],
+            score: Math.floor(Math.random() * 30) + 70,
+            meaning: cMeanings[Math.floor(Math.random() * cMeanings.length)]
+          };
+          break;
+        case 'birthday':
+          const bMeanings = ['合家欢乐开开心心', '福星高照万事大吉', '财源广进大吉大利', '前程似锦一帆风顺'];
+          newResult = {
+            date: inputs.date || '2026-03-25',
+            score: Math.floor(Math.random() * 10) + 90,
+            meaning: bMeanings[Math.floor(Math.random() * bMeanings.length)]
+          };
+          break;
+        case 'car':
+          const provinces = ['京', '沪', '津', '渝', '冀', '晋', '蒙', '辽', '吉', '黑', '苏', '浙', '皖', '闽', '赣', '鲁', '豫', '鄂', '湘', '粤', '桂', '琼', '川', '贵', '云', '藏', '陕', '甘', '青', '宁', '新'];
+          const cities = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+          const carMeanings = ['路路畅通', '出入平安', '财源滚滚', '大吉大利'];
+          const locations = ['山西·长治', '北京·朝阳', '广东·深圳', '上海·浦东', '浙江·杭州'];
+          newResult = {
+            plate: inputs.plate || (provinces[Math.floor(Math.random() * provinces.length)] + cities[Math.floor(Math.random() * cities.length)] + Math.floor(Math.random() * 90000 + 10000)),
+            value: Math.floor(Math.random() * 50000 + 10000) + '元',
+            location: locations[Math.floor(Math.random() * locations.length)],
+            meaning: carMeanings[Math.floor(Math.random() * carMeanings.length)]
+          };
+          break;
+        case 'phone':
+          const pLevels = ['牛掰', '极好', '优秀', '大吉'];
+          const pMeanings = ['花开富贵', '财运亨通', '事业有成', '万事如意'];
+          newResult = {
+            number: inputs.number || Math.floor(Math.random() * 9000 + 1000).toString(),
+            value: Math.floor(Math.random() * 100000 + 10000),
+            level: pLevels[Math.floor(Math.random() * pLevels.length)],
+            meaning: pMeanings[Math.floor(Math.random() * pMeanings.length)]
+          };
+          break;
+      }
+      setResults(newResult);
+      setIsCalculating(false);
+    }, 1500);
+  };
 
   const renderToolContent = () => {
     switch (toolId) {
@@ -894,257 +1308,327 @@ function EntertainmentToolView({ toolId, onClose }: { toolId: string, onClose: (
           <div className="flex flex-col h-full bg-[#FFB347] relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none bg-[radial-gradient(circle_at_center,_#fff_0%,_transparent_70%)]" />
             
-            {/* Header Banner */}
             <div className="mt-8 mx-auto relative z-10">
               <div className="bg-[#5C6BC0] px-12 py-2 rounded-full border-4 border-[#9FA8DA] shadow-lg">
                 <h2 className="text-white text-xl font-bold tracking-[0.2em]">生肖测评</h2>
               </div>
             </div>
 
-            {/* Main Card */}
             <div className="mt-6 mx-4 bg-white rounded-[32px] p-6 shadow-2xl relative z-10">
               <div className="space-y-4">
-                <div className="bg-[#E3F2FD] p-4 rounded-full flex items-center gap-4 shadow-inner">
+                <div className="bg-[#E3F2FD] p-4 rounded-full flex items-center gap-4 shadow-inner cursor-pointer hover:bg-[#BBDEFB] transition-colors" onClick={() => {
+                  const zodiacs = ['鼠', '牛', '虎', '兔', '龙', '蛇', '马', '羊', '猴', '鸡', '狗', '猪'];
+                  setInputs({ ...inputs, male: zodiacs[Math.floor(Math.random() * zodiacs.length)] });
+                }}>
                   <span className="text-[#1A237E] font-bold shrink-0">生肖(男):</span>
-                  <span className="text-[#1A237E] font-bold">鼠</span>
+                  <span className="text-[#1A237E] font-bold">{inputs.male || '请选择'}</span>
                 </div>
-                <div className="bg-[#E3F2FD] p-4 rounded-full flex items-center gap-4 shadow-inner">
+                <div className="bg-[#E3F2FD] p-4 rounded-full flex items-center gap-4 shadow-inner cursor-pointer hover:bg-[#BBDEFB] transition-colors" onClick={() => {
+                  const zodiacs = ['鼠', '牛', '虎', '兔', '龙', '蛇', '马', '羊', '猴', '鸡', '狗', '猪'];
+                  setInputs({ ...inputs, female: zodiacs[Math.floor(Math.random() * zodiacs.length)] });
+                }}>
                   <span className="text-[#1A237E] font-bold shrink-0">生肖(女):</span>
-                  <span className="text-[#1A237E] font-bold">鼠</span>
+                  <span className="text-[#1A237E] font-bold">{inputs.female || '请选择'}</span>
                 </div>
               </div>
 
-              <button className="mt-8 w-full relative group">
+              <button 
+                onClick={handleCalculate}
+                disabled={isCalculating}
+                className="mt-8 w-full relative group"
+              >
                 <div className="absolute inset-0 bg-[#D84315] rounded-full blur-sm group-hover:blur-md transition-all" />
                 <div className="relative bg-gradient-to-b from-[#FFF176] to-[#FBC02D] border-4 border-[#FFEB3B] rounded-full py-3 shadow-lg">
-                  <span className="text-[#BF360C] text-2xl font-black tracking-[0.3em]">立即测算</span>
+                  <span className="text-[#BF360C] text-2xl font-black tracking-[0.3em]">
+                    {isCalculating ? '测算中...' : '立即测算'}
+                  </span>
                 </div>
               </button>
             </div>
 
-            {/* Results Table */}
-            <div className="mt-8 flex-1 flex flex-col">
-              <div className="bg-[#F06292] py-3 px-6 flex justify-between text-white font-bold text-lg">
-                <span>生肖(男+女)</span>
-                <span>幸福指数</span>
-                <span>寓意</span>
-              </div>
-              <div className="flex-1 bg-transparent py-4 px-6 flex justify-between text-[#1A237E] font-bold text-xl">
-                <span>鼠鼠</span>
-                <span>92%</span>
-                <span>天伦之乐</span>
-              </div>
-            </div>
+            {results && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-8 flex-1 flex flex-col"
+              >
+                <div className="bg-[#F06292] py-3 px-6 flex justify-between text-white font-bold text-lg">
+                  <span>生肖({results.male}+{results.female})</span>
+                  <span>幸福指数</span>
+                  <span>寓意</span>
+                </div>
+                <div className="flex-1 bg-transparent py-4 px-6 flex justify-between text-[#1A237E] font-bold text-xl">
+                  <span>{results.male}{results.female}</span>
+                  <span>{results.score}</span>
+                  <span>{results.meaning}</span>
+                </div>
+              </motion.div>
+            )}
           </div>
         );
 
       case 'constellation':
         return (
           <div className="flex flex-col h-full bg-[#1A237E] relative overflow-hidden">
-            {/* Space Background */}
             <div className="absolute inset-0 opacity-40">
               <div className="absolute top-10 left-10 w-20 h-20 bg-red-500 rounded-full blur-3xl animate-pulse" />
               <div className="absolute bottom-20 right-10 w-32 h-32 bg-blue-500 rounded-full blur-3xl" />
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]" />
             </div>
             
-            {/* Header Banner */}
             <div className="mt-8 mx-auto relative z-10">
               <div className="bg-[#5C6BC0] px-12 py-2 rounded-full border-4 border-[#9FA8DA] shadow-lg">
                 <h2 className="text-white text-xl font-bold tracking-[0.2em]">星座测评</h2>
               </div>
             </div>
 
-            {/* Main Card */}
             <div className="mt-6 mx-4 bg-white rounded-[32px] p-6 shadow-2xl relative z-10">
               <div className="space-y-4">
-                <div className="bg-[#E3F2FD] p-4 rounded-full flex items-center gap-4 shadow-inner">
+                <div className="bg-[#E3F2FD] p-4 rounded-full flex items-center gap-4 shadow-inner cursor-pointer hover:bg-[#BBDEFB] transition-colors" onClick={() => {
+                  const constellations = ['白羊座', '金牛座', '双子座', '巨蟹座', '狮子座', '处女座', '天秤座', '天蝎座', '射手座', '摩羯座', '水瓶座', '双鱼座'];
+                  setInputs({ ...inputs, male: constellations[Math.floor(Math.random() * constellations.length)] });
+                }}>
                   <span className="text-[#1A237E] font-bold shrink-0">男星座:</span>
-                  <span className="text-[#1A237E] font-bold">白羊座</span>
+                  <span className="text-[#1A237E] font-bold">{inputs.male || '请选择'}</span>
                 </div>
-                <div className="bg-[#E3F2FD] p-4 rounded-full flex items-center gap-4 shadow-inner">
+                <div className="bg-[#E3F2FD] p-4 rounded-full flex items-center gap-4 shadow-inner cursor-pointer hover:bg-[#BBDEFB] transition-colors" onClick={() => {
+                  const constellations = ['白羊座', '金牛座', '双子座', '巨蟹座', '狮子座', '处女座', '天秤座', '天蝎座', '射手座', '摩羯座', '水瓶座', '双鱼座'];
+                  setInputs({ ...inputs, female: constellations[Math.floor(Math.random() * constellations.length)] });
+                }}>
                   <span className="text-[#1A237E] font-bold shrink-0">女星座:</span>
-                  <span className="text-[#1A237E] font-bold">白羊座</span>
+                  <span className="text-[#1A237E] font-bold">{inputs.female || '请选择'}</span>
                 </div>
               </div>
 
-              <button className="mt-8 w-full relative group">
+              <button 
+                onClick={handleCalculate}
+                disabled={isCalculating}
+                className="mt-8 w-full relative group"
+              >
                 <div className="absolute inset-0 bg-[#D84315] rounded-full blur-sm group-hover:blur-md transition-all" />
                 <div className="relative bg-gradient-to-b from-[#FFF176] to-[#FBC02D] border-4 border-[#FFEB3B] rounded-full py-3 shadow-lg">
-                  <span className="text-[#BF360C] text-2xl font-black tracking-[0.3em]">立即测算</span>
+                  <span className="text-[#BF360C] text-2xl font-black tracking-[0.3em]">
+                    {isCalculating ? '测算中...' : '立即测算'}
+                  </span>
                 </div>
               </button>
             </div>
 
-            {/* Results Table */}
-            <div className="mt-8 flex-1 flex flex-col">
-              <div className="bg-[#FF0000] py-3 px-6 flex justify-between text-white font-bold text-lg">
-                <span>星座(男+女)</span>
-                <span>幸福指数</span>
-                <span>寓意</span>
-              </div>
-              <div className="flex-1 bg-transparent py-4 px-6 flex justify-between text-white font-bold text-xl">
-                <span>白羊座白羊座</span>
-                <span className="flex items-center gap-1"><Heart size={20} fill="red" className="text-red-500" /> 75</span>
-                <span>凤凰于飞</span>
-              </div>
-            </div>
+            {results && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-8 flex-1 flex flex-col"
+              >
+                <div className="bg-[#FF0000] py-3 px-6 flex justify-between text-white font-bold text-lg">
+                  <span>星座({results.male}+{results.female})</span>
+                  <span>幸福指数</span>
+                  <span>寓意</span>
+                </div>
+                <div className="flex-1 bg-transparent py-4 px-6 flex justify-between text-white font-bold text-xl">
+                  <span>{results.male}{results.female}</span>
+                  <span className="flex items-center gap-1"><Heart size={20} fill="red" className="text-red-500" /> {results.score}</span>
+                  <span>{results.meaning}</span>
+                </div>
+              </motion.div>
+            )}
           </div>
         );
 
       case 'birthday':
         return (
           <div className="flex flex-col h-full bg-[#7986CB] relative overflow-hidden">
-            {/* Header Banner */}
             <div className="mt-8 mx-auto relative z-10">
               <div className="bg-[#5C6BC0] px-12 py-2 rounded-full border-4 border-[#9FA8DA] shadow-lg">
                 <h2 className="text-white text-xl font-bold tracking-[0.1em]">请输入测试所需信息</h2>
               </div>
             </div>
 
-            {/* Main Card */}
             <div className="mt-6 mx-4 bg-white rounded-[32px] p-6 shadow-2xl relative z-10">
               <div className="space-y-4">
                 <div className="bg-[#E3F2FD] p-4 rounded-full flex items-center gap-4 shadow-inner">
                   <span className="text-[#1A237E] font-bold shrink-0">生辰:</span>
-                  <span className="text-[#1A237E] font-bold">2013-01-01</span>
+                  <input 
+                    type="date" 
+                    className="bg-transparent text-[#1A237E] font-bold outline-none flex-1"
+                    value={inputs.date || '2026-03-25'}
+                    onChange={(e) => setInputs({ ...inputs, date: e.target.value })}
+                  />
                 </div>
               </div>
 
-              <button className="mt-8 w-full relative group">
+              <button 
+                onClick={handleCalculate}
+                disabled={isCalculating}
+                className="mt-8 w-full relative group"
+              >
                 <div className="absolute inset-0 bg-[#D84315] rounded-full blur-sm group-hover:blur-md transition-all" />
                 <div className="relative bg-gradient-to-b from-[#FFF176] to-[#FBC02D] border-4 border-[#FFEB3B] rounded-full py-3 shadow-lg">
-                  <span className="text-[#BF360C] text-2xl font-black tracking-[0.3em]">立即测算</span>
+                  <span className="text-[#BF360C] text-2xl font-black tracking-[0.3em]">
+                    {isCalculating ? '测算中...' : '立即测算'}
+                  </span>
                 </div>
               </button>
             </div>
 
-            {/* Results Table */}
-            <div className="mt-8 flex-1 flex flex-col">
-              <div className="py-3 px-6 flex justify-between text-white font-bold text-xl">
-                <span>生辰</span>
-                <span>评分:</span>
-                <span>寓意</span>
-              </div>
-              <div className="flex-1 bg-transparent py-4 px-6 flex justify-between text-white font-bold text-xl">
-                <span>2013-01-01</span>
-                <span>99</span>
-                <span>合家欢乐开开心心</span>
-              </div>
-            </div>
+            {results && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-8 flex-1 flex flex-col"
+              >
+                <div className="py-3 px-6 flex justify-between text-white font-bold text-xl">
+                  <span>生辰</span>
+                  <span>评分:</span>
+                  <span>寓意</span>
+                </div>
+                <div className="flex-1 bg-transparent py-4 px-6 flex justify-between text-white font-bold text-xl">
+                  <span>{results.date}</span>
+                  <span>{results.score}</span>
+                  <span>{results.meaning}</span>
+                </div>
+              </motion.div>
+            )}
           </div>
         );
 
       case 'car':
         return (
           <div className="flex flex-col h-full bg-[#B71C1C] relative overflow-hidden">
-            {/* Festive Background */}
             <div className="absolute inset-0">
               <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-[#FFD54F]/20 to-transparent" />
               <img src="https://picsum.photos/seed/car_bg/800/1200" className="absolute inset-0 w-full h-full object-cover opacity-30" referrerPolicy="no-referrer" />
             </div>
 
-            {/* Title */}
             <div className="mt-12 mx-auto relative z-10 text-center">
               <h1 className="text-5xl font-black text-[#FFD54F] drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)] italic tracking-tighter">
                 车牌吉运鉴定
               </h1>
             </div>
 
-            {/* Main Card */}
             <div className="mt-8 mx-4 bg-white rounded-2xl p-6 shadow-2xl relative z-10 border-4 border-[#FFD54F]/30">
               <h3 className="text-[#B71C1C] text-xl font-bold text-center mb-6">车牌号评测</h3>
               <div className="border-2 border-[#E0E0E0] rounded-full p-4 flex items-center gap-4">
                 <span className="text-black font-bold shrink-0">车牌号:</span>
-                <span className="text-black font-bold">晋D34553</span>
+                <input 
+                  type="text"
+                  placeholder="如: 晋D34553"
+                  className="bg-transparent text-black font-bold outline-none flex-1"
+                  value={inputs.plate || ''}
+                  onChange={(e) => setInputs({ ...inputs, plate: e.target.value })}
+                />
               </div>
 
-              <button className="mt-8 w-full relative group">
+              <button 
+                onClick={handleCalculate}
+                disabled={isCalculating}
+                className="mt-8 w-full relative group"
+              >
                 <div className="absolute inset-0 bg-[#D84315] rounded-full blur-sm" />
                 <div className="relative bg-gradient-to-b from-[#FFF176] to-[#FBC02D] border-2 border-[#FFEB3B] rounded-full py-3 shadow-lg">
-                  <span className="text-[#BF360C] text-xl font-black tracking-[0.2em]">立即鉴定</span>
+                  <span className="text-[#BF360C] text-xl font-black tracking-[0.2em]">
+                    {isCalculating ? '鉴定中...' : '立即鉴定'}
+                  </span>
                 </div>
               </button>
             </div>
 
-            {/* Results Display */}
-            <div className="mt-8 mx-4 relative z-10 flex flex-col overflow-hidden rounded-xl shadow-2xl">
-              <div className="bg-[#0D47A1] py-4 text-center">
-                <span className="text-white text-4xl font-black tracking-widest">晋D34553</span>
-              </div>
-              <div className="grid grid-cols-2">
-                <div className="bg-[#BDBDBD] p-4 text-center border-r border-white/20">
-                  <span className="text-[#0D47A1] font-bold text-lg">车牌估值</span>
+            {results && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="mt-8 mx-4 relative z-10 flex flex-col overflow-hidden rounded-xl shadow-2xl"
+              >
+                <div className="bg-[#0D47A1] py-4 text-center">
+                  <span className="text-white text-4xl font-black tracking-widest">{results.plate}</span>
                 </div>
-                <div className="bg-white p-4 text-center">
-                  <span className="text-[#0D47A1] font-black text-2xl tracking-tighter">28728元</span>
+                <div className="grid grid-cols-2">
+                  <div className="bg-[#BDBDBD] p-4 text-center border-r border-white/20">
+                    <span className="text-[#0D47A1] font-bold text-lg">车牌估值</span>
+                  </div>
+                  <div className="bg-white p-4 text-center">
+                    <span className="text-[#0D47A1] font-black text-2xl tracking-tighter">{results.value}</span>
+                  </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-2">
-                <div className="bg-[#0D47A1] p-2 text-center border-r border-white/20">
-                  <span className="text-white font-bold">车牌归属</span>
+                <div className="grid grid-cols-2">
+                  <div className="bg-[#0D47A1] p-2 text-center border-r border-white/20">
+                    <span className="text-white font-bold">车牌归属</span>
+                  </div>
+                  <div className="bg-[#0D47A1] p-2 text-center">
+                    <span className="text-white font-bold">{results.location}</span>
+                  </div>
                 </div>
-                <div className="bg-[#0D47A1] p-2 text-center">
-                  <span className="text-white font-bold">山西·长治</span>
+                <div className="grid grid-cols-2">
+                  <div className="bg-[#BDBDBD] p-2 text-center border-r border-white/20">
+                    <span className="text-[#0D47A1] font-bold">寓意:</span>
+                  </div>
+                  <div className="bg-[#BDBDBD] p-2 text-center">
+                    <span className="text-[#0D47A1] font-bold">{results.meaning}</span>
+                  </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-2">
-                <div className="bg-[#BDBDBD] p-2 text-center border-r border-white/20">
-                  <span className="text-[#0D47A1] font-bold">寓意:</span>
-                </div>
-                <div className="bg-[#BDBDBD] p-2 text-center">
-                  <span className="text-[#0D47A1] font-bold">路路畅通</span>
-                </div>
-              </div>
-            </div>
+              </motion.div>
+            )}
           </div>
         );
 
       case 'phone':
         return (
           <div className="flex flex-col h-full bg-[#F44336] relative overflow-hidden">
-            {/* Koi Background */}
             <div className="absolute top-0 left-0 w-full h-64">
               <img src="https://picsum.photos/seed/koi/800/400" className="w-full h-full object-cover opacity-60" referrerPolicy="no-referrer" />
               <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#F44336]" />
             </div>
 
-            {/* Title */}
             <div className="mt-12 mx-auto relative z-10 text-center">
               <h1 className="text-5xl font-black text-white drop-shadow-lg italic leading-tight">
                 手机号码<br/>幸运测试
               </h1>
             </div>
 
-            {/* Main Card */}
             <div className="mt-8 mx-4 bg-white rounded-xl p-1 shadow-2xl relative z-10">
               <div className="border-4 border-[#FFD54F] rounded-lg p-6">
                 <h3 className="text-[#B71C1C] text-xl font-bold text-center mb-6">手机后四位测试</h3>
                 <div className="flex items-center gap-4 mb-8">
                   <span className="text-black font-bold shrink-0">手机后四位</span>
-                  <div className="flex-1 bg-[#F5F5F5] p-3 rounded text-black font-bold">1111</div>
+                  <input 
+                    type="text"
+                    maxLength={4}
+                    placeholder="如: 1111"
+                    className="flex-1 bg-[#F5F5F5] p-3 rounded text-black font-bold outline-none"
+                    value={inputs.number || ''}
+                    onChange={(e) => setInputs({ ...inputs, number: e.target.value.replace(/\D/g, '') })}
+                  />
                 </div>
-                <button className="w-full bg-gradient-to-r from-[#FF9800] to-[#F57C00] py-3 rounded-lg text-white font-bold text-xl shadow-lg">
-                  查看结果
+                <button 
+                  onClick={handleCalculate}
+                  disabled={isCalculating}
+                  className="w-full bg-gradient-to-r from-[#FF9800] to-[#F57C00] py-3 rounded-lg text-white font-bold text-xl shadow-lg active:scale-95 transition-transform"
+                >
+                  {isCalculating ? '测算中...' : '查看结果'}
                 </button>
               </div>
             </div>
 
-            {/* Results Table */}
-            <div className="mt-8 px-4 relative z-10">
-              <div className="flex justify-between text-[#B71C1C] font-bold text-lg mb-4">
-                <span>手机尾号</span>
-                <span>估值</span>
-                <span>优秀程度</span>
-                <span>寓意</span>
-              </div>
-              <div className="flex justify-between text-[#B71C1C] font-bold text-xl">
-                <span>1111</span>
-                <span>95516</span>
-                <span>牛掰</span>
-                <span>花开富贵</span>
-              </div>
-            </div>
+            {results && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-8 px-4 relative z-10"
+              >
+                <div className="flex justify-between text-[#B71C1C] font-bold text-lg mb-4">
+                  <span>手机尾号</span>
+                  <span>估值</span>
+                  <span>优秀程度</span>
+                  <span>寓意</span>
+                </div>
+                <div className="flex justify-between text-[#B71C1C] font-bold text-xl">
+                  <span>{results.number}</span>
+                  <span>{results.value}</span>
+                  <span>{results.level}</span>
+                  <span>{results.meaning}</span>
+                </div>
+              </motion.div>
+            )}
           </div>
         );
 
@@ -1169,15 +1653,64 @@ function EntertainmentToolView({ toolId, onClose }: { toolId: string, onClose: (
       title="双击返回编辑模式"
     >
       {/* Content */}
-      <div className="h-full relative select-none">
-        {renderToolContent()}
+      <div className="h-full relative select-none flex flex-col">
+        {/* Live Header Overlay */}
+        <div className="absolute top-4 left-4 z-50 flex items-center gap-2 bg-black/20 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center shadow-lg border-2 border-white/20">
+            <User size={20} className="text-white" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-white text-xs font-bold leading-none">直播互动</span>
+            <span className="text-white/60 text-[10px] leading-none mt-0.5">1.2w 本场热度</span>
+          </div>
+          <button className="ml-2 bg-[#FF2D55] text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg active:scale-95 transition-transform">
+            关注
+          </button>
+        </div>
+
+        {/* Online Users Overlay */}
+        <div className="absolute top-4 right-32 z-50 flex items-center gap-1 bg-black/20 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
+          <div className="flex -space-x-2">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="w-6 h-6 rounded-full border-2 border-white/20 bg-gray-800 overflow-hidden">
+                <img src={`https://i.pravatar.cc/100?u=${i}`} alt="user" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              </div>
+            ))}
+          </div>
+          <span className="text-white text-[10px] font-bold ml-1">8234</span>
+        </div>
+
+        {/* Main Tool Content */}
+        <div className="flex-1">
+          {renderToolContent()}
+        </div>
+
+        {/* Bottom Interaction Bar */}
+        <div className="absolute bottom-6 left-0 right-0 z-50 px-4 flex items-center justify-between pointer-events-none">
+          <div className="flex items-center gap-3 pointer-events-auto">
+            <button className="w-12 h-12 rounded-full bg-black/20 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/40 transition-colors">
+              <Mic size={20} />
+            </button>
+            <div className="bg-black/20 backdrop-blur-md border border-white/10 px-4 py-2.5 rounded-full flex items-center gap-2">
+              <span className="text-white/40 text-sm">说点什么...</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 pointer-events-auto">
+            <button className="w-12 h-12 rounded-full bg-black/20 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/40 transition-colors">
+              <Sparkles size={20} />
+            </button>
+            <button className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-500 to-red-500 flex items-center justify-center text-white shadow-lg shadow-pink-500/20 active:scale-95 transition-transform">
+              <Heart size={24} fill="currentColor" />
+            </button>
+          </div>
+        </div>
         
         {/* Double Click Hint Overlay (Fade out after 3s) */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: [0, 1, 1, 0], y: [20, 0, 0, 20] }}
           transition={{ duration: 4, times: [0, 0.1, 0.8, 1] }}
-          className="absolute bottom-10 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
+          className="absolute bottom-24 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
         >
           <div className="bg-black/40 backdrop-blur-md px-6 py-2 rounded-full border border-white/10">
             <span className="text-white/80 text-xs font-bold tracking-widest uppercase">双击屏幕返回编辑模式</span>

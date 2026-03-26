@@ -16,12 +16,22 @@ export interface VideoSettings {
   localVideoUrl: string | null;
 }
 
+export interface AudioLibraryItem {
+  id: string;
+  name: string;
+  type: 'script' | 'product' | 'reply';
+  url: string;
+  duration: string;
+  createdAt: string;
+}
+
 export interface AudioSettings {
   enabled: boolean;
   mode: PlaybackMode;
   volume: number;
   interval: number;
   localAudioUrl: string | null;
+  library: AudioLibraryItem[];
 }
 
 export interface DigitalHuman {
